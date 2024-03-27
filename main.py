@@ -4,11 +4,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from mangum import Mangum
 
-from .tooling import process_progression
-from .crud.CreateSession import SessionLocal
-from .crud.Models import Email, UserCreate, ChordCreate, ChordPlayed, BetaTestingInput
-from .crud.Chords import get_chord_shapes, get_chords_played
-from .crud.Email import send_email
+from tooling import process_progression
+from crud.CreateSession import SessionLocal
+from crud.Models import Email, UserCreate, ChordCreate, ChordPlayed, BetaTestingInput
+from crud.Chords import get_chord_shapes, get_chords_played
+from crud.Email import send_email
 
 app = FastAPI()
 
