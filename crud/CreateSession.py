@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DB_URL")
-print('dburl', SQLALCHEMY_DATABASE_URL)
 # SQLALCHEMY_DATABASE_URL = "postgresql://postgres:cartesian@localhost/vv_2"
 
 def SessionLocal():
