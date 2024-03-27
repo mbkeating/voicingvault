@@ -1,0 +1,14 @@
+fastapi>=0.100.0
+fastapi-sqlalchemy
+pydantic>=2.0.0
+pydantic-settings
+uvicorn
+python-dotenv
+requests
+mangum
+psycopg2-binary
+python-multipart
+google-api-python-client==1.7.9
+google-auth-httplib2==0.0.3
+google-cloud-api-keys
+google-auth-oauthlib
