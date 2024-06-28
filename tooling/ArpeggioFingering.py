@@ -94,4 +94,18 @@ class ArpeggioFingering:
 
 
     def __repr__(self):
-        return '|'.join(str(string) + ',' + str(fret) for string, fret in self.fingering)
+        t = ['|' for _ in range(6)]
+        f = list(self.fingering)
+        for i in range(len(f)):
+            string, fret = f[i]
+            for j in range(6):
+                t[j] += '-'
+            for j in range(6):
+                if j == 5 - string:
+                    t[j] += str(fret)
+                else:
+                    t[j] += ''.join(['-' for _ in range(len(str(fret)))])
+            for j in range(6):
+                t[j] += '-'
+
+        return '\n'.join(t)

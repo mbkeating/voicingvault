@@ -1,5 +1,5 @@
 class ChordFingering:
-    def __init__(self, chord_shape_id, root_note_pos, fingering):
+    def __init__(self, chord_shape_id, root_note_pos, fingering, layer):
         """
         Initialize a single chord fingering with a name
 
@@ -11,6 +11,7 @@ class ChordFingering:
         self.chord_shape_id = chord_shape_id
         self.root_note_pos = root_note_pos
         self.fingering = fingering
+        self.layer = layer
 
 
     def average_string(self):
@@ -81,6 +82,8 @@ class ChordFingering:
     def __eq__(self, other):
         """
         Returns true if self and other have matching fingerings for all 6 strings
+
+        Also need to compare layer
         """
         if not isinstance(other, ChordFingering):
             return False
@@ -88,7 +91,7 @@ class ChordFingering:
         for i in range(6):
             if self.fingering[i] != other.fingering[i]:
                 return False
-        return True
+        return self.layer == other.layer
 
 
     def __hash__(self):
@@ -97,8 +100,8 @@ class ChordFingering:
         for i in range(len(self.fingering)):
             if self.fingering[i] >= 0:
                 total += (self.fingering[i] + 1) * (10 ** i)
-        return total
+        return total + ((10**6) * self.layer)
 
     
     def __repr__(self):
-        return '|'.join([str(f) for f in self.fingering]) + ' ' + str(self.root_note_pos) + ' ' + str(self.chord_shape_id)
+        return '|'.join([str(f) for f in self.fingering]) + ' ' + str(self.root_note_pos) + ' ' + str(self.chord_shape_id) + ' ' + str(self.layer)

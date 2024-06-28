@@ -1,12 +1,17 @@
-from fastapi import FastAPI, Depends
+import os
+from random import randint
+from mangum import Mangum
+from fastapi import FastAPI, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+import bcrypt
 from mangum import Mangum
 
 from tooling import process_progression
 from crud.CreateSession import SessionLocal
-from crud.Models import Email, UserCreate, ChordCreate, ChordPlayed, BetaTestingInput
+from crud.Models import Email, User, UserEmail, UserVerify, UserResetPassword, ChordCreate, ChordPlayed, BetaTestingInput
 from crud.Chords import get_chord_shapes, get_chords_played
 from crud.Email import send_email
 
@@ -34,12 +39,310 @@ def get_db():
 async def root():
     return {"message": "Hello World"}
 
+@app.post('/create-user')
+async def create_user(data: User, db: Session=Depends(get_db)):
+    """
+    Create a temporary user with email and password
+
+    @return True if the user creation was a success and false otherwise
+    """
+    print('what up')
+    salt = bcrypt.gensalt()
+
+    # Hash the password and convert to hex (for storage)
+    hashed_password = bcrypt.hashpw(
+        password=data.password.encode(),
+        salt=salt
+    ).hex()
+
+    insert = text("INSERT INTO users (email, password) VALUES (:email, :password)")
+    params = {'email': data.email, 'password': hashed_password}
+
+    try:
+        db.execute(insert, params)
+        db.commit()
+        return True
+    except:
+        db.rollback()
+        # There's already a user with that email. Check if the user is verified
+        query = text("SELECT verified FROM users WHERE email = :email")
+        params = {'email': data.email}
+        try:
+            result = db.execute(query, params)
+            user = result.fetchall()[0]
+            print(user)
+            if user.verified:
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={
+                        "error": "A user with that email already exists"
+                    },
+                )
+        except Exception as e:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": str(e)
+                },
+            )
+        
+        # The user isn't verified, update the password
+        update = text("UPDATE users SET password = :password WHERE email = :email")
+        params = {'email': data.email, 'password': hashed_password}
+        try:
+            db.execute(update, params)
+            db.commit()
+            return True
+        except:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": "Error creating user"
+                },
+            )
+
+
+@app.post('/create-verification-code')
+async def create_verification_code(data: UserEmail, db: Session=Depends(get_db)):
+    """
+    Create a 6 digit verification code (randomly)
+    set it to the verification code field in the user table
+    and send an email to the user with the verification code
+    """
+    # Generate random 6 digit code (as a string)
+    code = str(randint(100000, 999999))
+
+    # Update the users table to have the code
+    update = text("UPDATE users SET verification_code = :code WHERE email = :email")
+    params = {'code': code, 'email': data.email}
+
+    try:
+        db.execute(update, params)
+        db.commit()
+    except:
+        db.rollback()
+
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "Error creating verification code"
+            },
+        )
+    
+    # Email the user the new code
+    subject = 'VoicingVault Verification Code'
+    message = 'Your 6-digit verification code is ' + code
+    try:
+        await send_email(data.email, subject, message)
+    except:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "Error sending verification code"
+            },
+        )
+    
+    return True
+
+
+@app.post('/verify-user')
+async def verify_user_with_code(data: UserVerify, db: Session=Depends(get_db)):
+    """
+    Check that the code equals the code stored in the db for user
+    """
+    query = text("SELECT verification_code FROM users WHERE email = :email")
+    params = {'email': data.email}
+
+    try:
+        result = db.execute(query, params)
+        code = result.fetchone()
+    except:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "No user exists for that email"
+            },
+        )
+    
+    verification_code = code[0]
+    if verification_code == data.code:
+        update = text("UPDATE users SET verified = TRUE WHERE email = :email")
+        
+        try:
+            db.execute(update, params)
+            db.commit()
+            return True
+        except:
+            db.rollback()
+            
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": "Error verifying user"
+                },
+            )
+    
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": "Incorrect code"
+        },
+    )
+
+
+@app.post('/login-user')
+async def login_user(data: User, db: Session=Depends(get_db)):
+    """
+    Verify that the user credientials (username and password) are correct
+
+    @return the user_id if the credentials are correct
+    """
+    query = text("""
+        SELECT password, verified
+        FROM users
+        WHERE email = :email
+    """)
+    params = {'email': data.email}
+    
+    try:
+        result = db.execute(query, params)
+        user = result.fetchall()[0]
+    except:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "No user exists for that email"
+            },
+        )
+
+    # Check the given password against the hashed password in the db
+    check = bcrypt.checkpw(
+        password=data.password.encode(),
+        hashed_password=bytes.fromhex(user.password)
+    )
+
+    if check:
+        # Make sure the user is verified
+        verified = user.verified
+        if verified:
+            return {
+                'email': data.email
+            }
+        else:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": "User is not verified"
+                },
+            )
+    
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": "Incorrect password for username"
+        },
+    )
+
+
+@app.post('/generate-password-reset-code')
+async def generate_password_reset_code(data: UserEmail, db: Session=Depends(get_db)):
+    # Generate a random 9 digit code and save as verification_code in the users table
+    code = str(randint(100000000, 999999999))
+    update = text("UPDATE users SET verification_code = :code WHERE email = :email")
+    params = {'code': code, 'email': data.email}
+
+    try:
+        db.execute(update, params)
+        db.commit()
+    except:
+        db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "Error generating temporary password"
+            },
+        )
+    
+    # Email the user the new code
+    subject = 'VoicingVault Temporary Password'
+    message = 'Your temporary password is ' + code
+    try:
+        await send_email(data.email, subject, message)
+    except:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "Error sending temporary password"
+            },
+        )
+    
+    return True
+
+
+@app.post('/reset-password')
+async def reset_password(data: UserResetPassword, db: Session=Depends(get_db)):
+    """
+    Reset the password for a user if they enter the correct matching code
+    """
+    # Check that the code matches the temporary password in the user table
+    query = text("SELECT verification_code FROM users WHERE email = :email")
+    params = {'email': data.email}
+
+    try:
+        result = db.execute(query, params)
+        code = result.fetchall()[0]
+    except:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "No user exists for that email"
+            },
+        )
+    
+    verification_code = code.verification_code
+    if verification_code == data.code:
+        # Update the password
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(
+            password=data.password.encode(),
+            salt=salt
+        ).hex()
+
+        update = text("UPDATE users SET password = :password WHERE email = :email")
+        update_params = {'password': hashed_password, 'email': data.email}
+
+        try:
+            db.execute(update, update_params)
+            db.commit()
+            return True
+        except:
+            db.rollback()
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": "Error resetting password"
+                },
+            )
+    
+    return False
+
+
+
+
 @app.get('/{chord_list}')
 async def get_fingerings(chord_list: str, db: Session=Depends(get_db)):
-    chords_as_list = chord_list.split(' ')
-    c_major_shapes = get_chord_shapes(db)
-    chord_fingerings = process_progression.process_chord_progression(chord_list=chords_as_list, c_major_shapes=c_major_shapes)
-    return chord_fingerings
+    try:
+        chords_as_list = chord_list.split(' ')
+        c_major_shapes = get_chord_shapes(db)
+        chord_fingerings = process_progression.process_chord_progression(chord_list=chords_as_list, c_major_shapes=c_major_shapes)
+        return chord_fingerings
+    except:
+        return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": "Error generating chord tablature"
+                },
+            )
 
 @app.post('/create-chord')
 async def create_chord(chord: ChordCreate, db: Session=Depends(get_db)):
@@ -47,16 +350,6 @@ async def create_chord(chord: ChordCreate, db: Session=Depends(get_db)):
     params = {'chord_type': chord.chord_type, 'chord_fingering': chord.chord_fingering}
     db.execute(insert_sql, params)
     db.commit()
-
-@app.post('/create-player-user')
-async def create_player(user: UserCreate, db: Session=Depends(get_db)):
-    try:
-        insert_sql = text("INSERT INTO player (google_uid, email) VALUES (:google_uid, :email)")
-        params = {'google_uid': user.google_uid, 'email': user.email}
-        db.execute(insert_sql, params)
-        db.commit()
-    except:
-        print('User already in db')
 
 @app.post('/track-chord-played')
 async def track_chord_played(played: ChordPlayed, db: Session=Depends(get_db)):
@@ -73,11 +366,11 @@ async def track_chord_played(played: ChordPlayed, db: Session=Depends(get_db)):
         db.commit()
 
 
-@app.get('/get-chords-played/{google_uid}')
-async def get_chords_pl(google_uid: str, db: Session=Depends(get_db)):
-    return get_chords_played(google_uid, db)
+@app.get('/get-chords-played/{email}')
+async def get_chords_pl(email: str, db: Session=Depends(get_db)):
+    return get_chords_played(email, db)
 
-
+"""
 @app.post('/send-email')
 async def send_me_email(beta_testing_input: BetaTestingInput, db: Session=Depends(get_db)):
     select_sql = text("SELECT email FROM player WHERE google_uid=:google_uid")
@@ -85,21 +378,11 @@ async def send_me_email(beta_testing_input: BetaTestingInput, db: Session=Depend
     email = result.fetchone()[0]
     total_message = email + ' wants to sign up with \n Experience: ' + beta_testing_input.experience + '\n They hope to: ' + beta_testing_input.hope
     await send_email(total_message)
+"""
 
-
-@app.post('/grant-access')
-async def grant_access(email: Email, db: Session=Depends(get_db)):
-    update_sql = text("UPDATE player SET access_approved=TRUE WHERE email=:email")
-    db.execute(update_sql, {'email':email.email})
-    db.commit()
-
-
-@app.get('/has-access/{google_uid}')
-async def has_access(google_uid: str, db: Session=Depends(get_db)):
-    select_sql = text("SELECT access_approved FROM player WHERE google_uid=:google_uid")
-    result = db.execute(select_sql, {'google_uid': google_uid})
-    status = result.fetchone()[0]
-    return status
+@app.post('/send-email')
+async def send_me_email(email: Email):
+    await send_email(os.getenv("EMAIL_ADDR"), email.subject, email.message)
 
 
 handler = Mangum(app)

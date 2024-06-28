@@ -21,18 +21,18 @@ def get_chord_shapes(db):
     return c_shapes
 
 
-def get_chords_played(google_uid, db):
+def get_chords_played(email, db):
     res = {}
 
     select_sql = text('''
         SELECT chord_type, chord_fingering, chord_root_pos, cpp.id, datetime
-        FROM player AS p
-        JOIN chord_progression_played AS cpp ON cpp.player_id=p.google_uid
+        FROM users AS u
+        JOIN chord_progression_played AS cpp ON cpp.player_id=u.email
         JOIN chord_played AS chp ON cpp.id=chp.chord_progression_played_id
         JOIN chord_shape AS cs ON chp.chord_id=cs.id
-        WHERE p.google_uid=:google_uid
+        WHERE u.email=:email
     ''')
-    result = db.execute(select_sql, {'google_uid': google_uid})
+    result = db.execute(select_sql, {'email': email})
     rows = result.fetchall()
 
     for row in rows:

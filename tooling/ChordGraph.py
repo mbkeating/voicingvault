@@ -20,9 +20,9 @@ class ChordGraph:
             # Randomize a position in the source array for a fresh set of chord voicings (allows for regeneration)
             source_fingerings[randint(0, 5)] = randint(1, 22)
 
-            self.source = ChordFingering(chord_shape_id=None, root_note_pos=max(source_fingerings), fingering=source_fingerings)
+            self.source = ChordFingering(chord_shape_id=None, root_note_pos=max(source_fingerings), fingering=source_fingerings, layer=0)
             
-            self.sink = ChordFingering(chord_shape_id=None, root_note_pos=-2, fingering=[-2, -2, -2, -2, -2, -2])
+            self.sink = ChordFingering(chord_shape_id=None, root_note_pos=-2, fingering=[-2, -2, -2, -2, -2, -2], layer=0)
         else:
             self.source = ArpeggioFingering({(-1, -1)})
             self.sink = ArpeggioFingering({(-2, -2)})
@@ -30,7 +30,7 @@ class ChordGraph:
         self.current_layer = [self.source]
 
 
-    def add_chord(self, voicings: Voicings, chord_name: str, arpeggios: bool = False) -> None:
+    def add_chord(self, voicings: Voicings, chord_name: str, layer: int, arpeggios: bool = False) -> None:
         """
         Adds all fingerings for a chord to the end of the graph
         Connect each previous chord fingering to this chord
@@ -40,7 +40,7 @@ class ChordGraph:
 
         if not arpeggios:
             # Voice chords
-            relevant_voicings = voicings.get_chord_voicings(chord_name)
+            relevant_voicings = voicings.get_chord_voicings(chord_name, layer)
         else:
             # Voice arpeggios
             relevant_voicings = voicings.get_arpeggio_voicings(chord_name)

@@ -1,3 +1,8 @@
+drop table if exists chord_played;
+drop table if exists chord_progression_played;
+drop table if exists users;
+drop table if exists player;
+
 CREATE TABLE users (
     email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -7,22 +12,16 @@ CREATE TABLE users (
     PRIMARY KEY(email)
 );
 
--- Create Chord Shape table for c major shapes
-CREATE TABLE chord_shape (
+CREATE TABLE chord_progression_played (
     id SERIAL PRIMARY KEY,
-    chord_type VARCHAR(50) NOT NULL,
-    chord_fingering VARCHAR (128) NOT NULL
+    player_id VARCHAR(255) REFERENCES users(email),
+    datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
 
 CREATE TABLE chord_played (
     id SERIAL PRIMARY KEY,
     chord_progression_played_id INTEGER REFERENCES chord_progression_played(id),
     chord_id INTEGER REFERENCES chord_shape(id),
     chord_root_pos INTEGER NOT NULL
-);
-
-CREATE TABLE chord_progression_played (
-    id SERIAL PRIMARY KEY,
-    player_id VARCHAR(255) REFERENCES player(google_uid),
-    datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

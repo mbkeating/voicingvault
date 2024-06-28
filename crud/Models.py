@@ -1,8 +1,24 @@
 from pydantic import BaseModel
 
-class UserCreate(BaseModel):
-    google_uid: str
+class User(BaseModel):
     email: str
+    password: str
+
+
+class UserEmail(BaseModel):
+    email: str
+
+
+class UserVerify(BaseModel):
+    email: str
+    code: str
+
+
+class UserResetPassword(BaseModel):
+    email: str
+    code: str
+    password: str
+
 
 class ChordCreate(BaseModel):
     chord_fingering: str
@@ -19,4 +35,5 @@ class BetaTestingInput(BaseModel):
     google_uid: str
 
 class Email(BaseModel):
-    email: str
+    subject: str
+    message: str

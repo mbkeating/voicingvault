@@ -45,7 +45,7 @@ class Voicings:
         return None
 
 
-    def get_chord_voicings(self, chord_name) -> list[ChordFingering]:
+    def get_chord_voicings(self, chord_name, layer) -> list[ChordFingering]:
         """
         Gets all chord fingering possibilities for the chord name
         """
@@ -83,7 +83,7 @@ class Voicings:
                         if root_note_pos == -1:
                             root_note_pos = new_fingering[i]
 
-            chord_fingerings.append(ChordFingering(chord_shape_id=chord_shape_id, root_note_pos=root_note_pos, fingering=new_fingering))
+            chord_fingerings.append(ChordFingering(chord_shape_id=chord_shape_id, root_note_pos=root_note_pos, fingering=new_fingering, layer=layer))
 
         return chord_fingerings
 

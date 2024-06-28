@@ -1,5 +1,6 @@
 import requests
 
+"""
 c_major_shapes = {
     'maj7': [
             # E string bass
@@ -97,9 +98,74 @@ c_major_shapes = {
             [-1, -1, 10, 11, 10, 11],
         ]
 }
+"""
+g_major_shapes = {
+    "maj": [
+        [-1, -1, -1, 4, 3, 3],
+        [-1, -1, -1, 7, 8, 7],
+        [-1, -1, -1, 10, 12, 12],
 
+        [-1, -1, 5, 4, 3, -1],
+        [-1, -1, 9, 7, 8, -1],
+        [-1, -1, 12, 12, 12, -1],
+
+        [-1, 5, 5, 4, -1, -1],
+        [-1, 10, 9, 7, -1, -1],
+        [-1, 14, 12, 12, -1, -1],
+
+        [7, 5, 5, -1, -1, -1],
+        [10, 10, 9, -1, -1, -1],
+        [15, 14, 12, -1, -1, -1]
+    ],
+    "min": [
+        [-1, -1, -1, 3, 3, 3],
+        [-1, -1, -1, 7, 8, 6],
+        [-1, -1, -1, 12, 11, 10],
+
+        [-1, -1, 5, 3, 3, -1],
+        [-1, -1, 8, 7, 8, -1],
+        [-1, -1, 12, 12, 11, -1],
+
+        [-1, 5, 5, 3, -1, -1],
+        [-1, 10, 8, 7, -1, -1],
+        [-1, 13, 12, 12, -1, -1],
+
+        [6, 5, 5, -1, -1, -1],
+        [10, 10, 8, -1, -1, -1],
+        [15, 13, 12, -1, -1, -1]
+    ]
+}
+
+def g_to_c():
+    c_major_shapes = {
+        '': [],
+        'min': []
+    }
+    for shape_type, shapes in g_major_shapes.items():
+        for shape in shapes:
+            c_shape = []
+            modulo = False
+            for i in shape:
+                if i == -1:
+                    continue
+                if i + 5 > 16:
+                    modulo = True
+
+            for i in shape:
+                if i == -1:
+                    c_shape.append(-1)
+                else:
+                    val = i + 5
+                    if modulo:
+                        val = val % 12
+                    c_shape.append(val)
+            c_major_shapes[shape_type].append(c_shape)
+
+    return c_major_shapes
 
 if __name__ == "__main__":
+    c_major_shapes = g_to_c()
+
     for shape_type, shapes in c_major_shapes.items():
         for shape in shapes:
             data = {

@@ -5,6 +5,8 @@ Gets the best fingering pattern for a chord progression
 
 from .Voicings import Voicings
 from .ChordGraph import ChordGraph
+from .arpeggio_ordering import order_arpeggio
+
 def generate_from_name(type):
     """
     Experimental: generate c arpeggio from type
@@ -76,13 +78,13 @@ c_major_shapes_arpeggios = {
         {(5, 3), (4, 2), (4, 5), (3, 3)}
     ],
 }
-
+"""
 c_major_shapes_arpeggios = {
     'maj7': generate_from_name('maj7'),
     'min7': generate_from_name('min7'),
     '7': generate_from_name('7')
 }
-"""
+
 
 def process_chord_progression(chord_list, c_major_shapes):
     """
@@ -93,8 +95,8 @@ def process_chord_progression(chord_list, c_major_shapes):
 
     voicings = Voicings(c_major_shapes=c_major_shapes)
 
-    for chord in chord_list:
-        chord_graph.add_chord(voicings, chord)
+    for i, chord in enumerate(chord_list):
+        chord_graph.add_chord(voicings=voicings, chord_name=chord, layer=i)
 
     chord_graph.add_sink()
 
@@ -112,10 +114,12 @@ def process_arpeggio_progression(chord_list):
     voicings = Voicings(c_major_shapes=c_major_shapes_arpeggios)
 
     for chord in chord_list:
-        chord_graph.add_chord(voicings, chord, arpeggios=True)
+        chord_graph.add_chord(voicings=voicings, chord_name=chord, layer=0, arpeggios=True)
 
     chord_graph.add_sink()
 
     shortest_path_prev = chord_graph.shortest_path()
 
-    return chord_graph.reconstruct_path(shortest_path_prev)
+    path = chord_graph.reconstruct_path(shortest_path_prev)
+
+    return order_arpeggio(path)
