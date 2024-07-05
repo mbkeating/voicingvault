@@ -18,7 +18,7 @@ from crud.Email import send_email
 app = FastAPI()
 
 # Allow all origins (replace '*' with the specific origin you want to allow)
-origins = ["http://localhost:3000", "https://voicingvault.web.app"]
+origins = ["http://localhost:3000", "https://voicingvault.web.app", "https://voicingvault.com", "voicingvault.com"]
 
 app.add_middleware(
     CORSMiddleware,
