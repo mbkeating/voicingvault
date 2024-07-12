@@ -1,5 +1,12 @@
 from pydantic import BaseModel
 
+class ChordQuery(BaseModel):
+    chord_list: list[str]
+    allowed_strings: list[bool] = [True, True, True, True, True, True]
+    min_fret: int
+    max_fret: int
+
+
 class User(BaseModel):
     email: str
     password: str

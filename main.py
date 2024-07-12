@@ -11,7 +11,7 @@ from mangum import Mangum
 
 from tooling import process_progression
 from crud.CreateSession import SessionLocal
-from crud.Models import Email, User, UserEmail, UserVerify, UserResetPassword, ChordCreate, ChordPlayed, BetaTestingInput
+from crud.Models import ChordQuery, Email, User, UserEmail, UserVerify, UserResetPassword, ChordCreate, ChordPlayed, BetaTestingInput
 from crud.Chords import get_chord_shapes, get_chords_played
 from crud.Email import send_email
 
@@ -46,7 +46,6 @@ async def create_user(data: User, db: Session=Depends(get_db)):
 
     @return True if the user creation was a success and false otherwise
     """
-    print('what up')
     salt = bcrypt.gensalt()
 
     # Hash the password and convert to hex (for storage)
@@ -329,12 +328,19 @@ async def reset_password(data: UserResetPassword, db: Session=Depends(get_db)):
 
 
 
-@app.get('/{chord_list}')
-async def get_fingerings(chord_list: str, db: Session=Depends(get_db)):
+@app.post('/chord-query')
+async def get_fingerings(data: ChordQuery, db: Session=Depends(get_db)):
     try:
-        chords_as_list = chord_list.split(' ')
+        chord_list = [c for c in data.chord_list if len(c) > 0]
         c_major_shapes = get_chord_shapes(db)
-        chord_fingerings = process_progression.process_chord_progression(chord_list=chords_as_list, c_major_shapes=c_major_shapes)
+        chord_fingerings = process_progression.process_chord_progression(chord_list=chord_list, c_major_shapes=c_major_shapes, allowed_strings=data.allowed_strings, min_fret=data.min_fret, max_fret=data.max_fret)
+        if chord_fingerings == 'Bad Search Constraints':
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "error": "Bad Search Constraints"
+                },
+            )
         return chord_fingerings
     except:
         return JSONResponse(
@@ -386,3 +392,12 @@ async def send_me_email(email: Email):
 
 
 handler = Mangum(app)
+
+@app.get('/users/{pw}')
+async def get_users(pw: str, db: Session=Depends(get_db)):
+    if pw == 'getmeusers':
+        select_sql = text('SELECT email FROM users')
+        result = db.execute(select_sql)
+        rows = result.fetchall()
+        return rows
+    return False

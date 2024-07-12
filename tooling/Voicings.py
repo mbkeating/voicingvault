@@ -45,7 +45,22 @@ class Voicings:
         return None
 
 
-    def get_chord_voicings(self, chord_name, layer) -> list[ChordFingering]:
+    def chord_satisfies_constraint(self, chord_shape: list[int], allowed_strings: list[bool], min_fret: int, max_fret: int) -> bool:
+        """
+        Checks if a chord shape is in the allowed string list and within the min and max fret values
+        expect allowed strings to be something like [False, False, True, True, True, True] (only allow the top four strings)
+        """
+        
+        for i in range(6):
+            if not allowed_strings[i] and chord_shape[i] != -1:
+                return False
+            if chord_shape[i] != -1 and (chord_shape[i] < min_fret or chord_shape[i] > max_fret):
+                return False
+            
+        return True
+
+
+    def get_chord_voicings(self, chord_name, layer, allowed_strings, min_fret, max_fret) -> list[ChordFingering]:
         """
         Gets all chord fingering possibilities for the chord name
         """
@@ -75,6 +90,7 @@ class Voicings:
                     if new_fret < min_fretted:
                         min_fretted = new_fret
 
+            # Kind of arbitrary but don't allow any frets that have a minimum fret over 12 (high up the neck)
             if min_fretted > 12:
                 root_note_pos = -1
                 for i in range(6):
@@ -83,7 +99,8 @@ class Voicings:
                         if root_note_pos == -1:
                             root_note_pos = new_fingering[i]
 
-            chord_fingerings.append(ChordFingering(chord_shape_id=chord_shape_id, root_note_pos=root_note_pos, fingering=new_fingering, layer=layer))
+            if self.chord_satisfies_constraint(new_fingering, allowed_strings, min_fret, max_fret):
+                chord_fingerings.append(ChordFingering(chord_shape_id=chord_shape_id, root_note_pos=root_note_pos, fingering=new_fingering, layer=layer))
 
         return chord_fingerings
 

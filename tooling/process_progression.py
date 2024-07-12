@@ -86,7 +86,7 @@ c_major_shapes_arpeggios = {
 }
 
 
-def process_chord_progression(chord_list, c_major_shapes):
+def process_chord_progression(chord_list, c_major_shapes, allowed_strings, min_fret, max_fret):
     """
     Takes in a list of chord names
     Return the best fingering pattern to play the chord list
@@ -96,7 +96,7 @@ def process_chord_progression(chord_list, c_major_shapes):
     voicings = Voicings(c_major_shapes=c_major_shapes)
 
     for i, chord in enumerate(chord_list):
-        chord_graph.add_chord(voicings=voicings, chord_name=chord, layer=i)
+        chord_graph.add_chord(voicings=voicings, chord_name=chord, layer=i, allowed_strings=allowed_strings, min_fret=min_fret, max_fret=max_fret)
 
     chord_graph.add_sink()
 

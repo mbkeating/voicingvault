@@ -30,7 +30,7 @@ class ChordGraph:
         self.current_layer = [self.source]
 
 
-    def add_chord(self, voicings: Voicings, chord_name: str, layer: int, arpeggios: bool = False) -> None:
+    def add_chord(self, voicings: Voicings, chord_name: str, layer: int, arpeggios: bool = False, allowed_strings=[True, True, True, True, True, True], min_fret=0, max_fret=22) -> None:
         """
         Adds all fingerings for a chord to the end of the graph
         Connect each previous chord fingering to this chord
@@ -40,7 +40,7 @@ class ChordGraph:
 
         if not arpeggios:
             # Voice chords
-            relevant_voicings = voicings.get_chord_voicings(chord_name, layer)
+            relevant_voicings = voicings.get_chord_voicings(chord_name, layer, allowed_strings, min_fret, max_fret)
         else:
             # Voice arpeggios
             relevant_voicings = voicings.get_arpeggio_voicings(chord_name)
@@ -129,14 +129,17 @@ class ChordGraph:
         Take in the shortest path previous values found from the shortest_path function 
         and reconstruct the shortest path from source to sink
         """
-        cur = self.sink
-        path = []
-        while shortest_path_prev[cur] != self.source:
-            previous = shortest_path_prev[cur]
-            path.insert(0, previous)
-            cur = previous
-
-        return path
+        try:
+            cur = self.sink
+            path = []
+            while shortest_path_prev[cur] != self.source:
+                previous = shortest_path_prev[cur]
+                path.insert(0, previous)
+                cur = previous
+            return path
+        except:
+            # This should only be an error if the search constraints were too narrow
+            return 'Bad Search Constraints'
 
     
     def __str__(self):
